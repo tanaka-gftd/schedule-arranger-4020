@@ -6,6 +6,7 @@ const User = require('../models/user');
 const Schedule = require('../models/schedule');
 const Candidate = require('../models/candidate');
 const Availability = require('../models/availability');
+const Comment = require('../models/comment');
 
 describe('/login', () => {
   beforeAll(() => {
@@ -119,7 +120,60 @@ describe('/schedules/:scheduleId/users/:userId/candidates/:candidateId', () => {
   });
 });
 
+//コメントが更新されるかどうかのテスト
+describe('/schedules/:scheduleId/users/:userId/comments', () => {
+  let scheduleId = '';
+  beforeAll(() => {
+    passportStub.install(app);
+    passportStub.login({ id: 0, username: 'testuser' })
+  });
+
+  afterAll(async() => {
+    passportStub.logout();
+    passportStub.uninstall();
+    await deleteScheduleAggregate(scheduleId);
+  });
+
+  //テスト用コメントを送信し、コメントが更新されるかどうかをチェック
+  //まずは、コメントを送る先となるテスト用スケジュールを作成
+  test('コメントが更新できる', async() => {
+    await User.upsert({ userId: 0, username: 'testuser' });
+    const res = await request(app)
+      .post('/schedules')
+      .send({
+        scheduleName: 'テストコメント更新予定１',
+        memo: 'テストコメント更新メモ１',
+        candidates: 'テストコメント更新候補１'
+      })
+
+    const createdSchedulePath = res. headers.location;
+    scheduleId = createdSchedulePath.split('/schedules/')[1];
+
+    const userId = 0;  //テスト用ユーザIDは０
+
+    //指定されたパスにテスト用コメントを送信し、コメントが取得されるかをチェック
+    await request(app)
+      .post(`/schedules/${scheduleId}/users/${userId}/comments`)
+      .send({ comment: 'testcomment' })
+      .expect('{"status":"OK","comment":"testcomment"}')
+
+    //取得されたコメントが、DBに保存されているかのチェック
+    const comments = await Comment.findAll({
+      where: { scheduleId: scheduleId }
+    });
+    expect(comments.length).toBe(1);
+    expect(comments[0].comment).toBe('testcomment');
+  });
+});
+
+//テスト終了時に、テスト用データを削除するための関数
 async function deleteScheduleAggregate(scheduleId) {
+  const comments = await Comment.findAll({
+    where: { scheduleId: scheduleId }
+  });
+  const promisesCommentDestroy = comments.map((c) => { return c.destroy(); });
+  await Promise.all(promisesCommentDestroy);
+
   const availabilities = await Availability.findAll({
     where: { scheduleId: scheduleId }
   });

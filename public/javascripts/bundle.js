@@ -10995,6 +10995,22 @@ jquery__WEBPACK_IMPORTED_MODULE_0___default()('.availability-toggle-button').eac
       button.text(availabilityLabels[data.availability]);
     });
   });
+}); //コメントボタンを取得
+
+var buttonSelfComment = jquery__WEBPACK_IMPORTED_MODULE_0___default()('#self-comment-button'); //コメントボタン押下後の処理
+
+buttonSelfComment.on('click', function () {
+  var scheduleId = buttonSelfComment.data('schedule-id');
+  var userId = buttonSelfComment.data('user-id');
+  var comment = prompt('コメントを255文字以内で入力してください。'); //コメントがあれば（入力されれば）コメントを送信する
+
+  if (comment) {
+    jquery__WEBPACK_IMPORTED_MODULE_0___default().post("/schedules/".concat(scheduleId, "/users/").concat(userId, "/comments"), {
+      comment: comment
+    }, function (data) {
+      jquery__WEBPACK_IMPORTED_MODULE_0___default()('#self-comment').text(data.comment);
+    });
+  }
 });
 })();
 
